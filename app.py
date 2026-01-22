@@ -35,12 +35,11 @@ db_path = os.path.join(os.path.dirname(__file__), "clientas.db")
 conn = sqlite3.connect(db_path, check_same_thread=False)
 c = conn.cursor()
 
+# Crear tabla sin id y sin correo
 c.execute("""
 CREATE TABLE IF NOT EXISTS clientas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT,
     telefono TEXT,
-    email TEXT,
     instagram TEXT,
     tipo_cabello TEXT,
     fecha_procedimiento TEXT,
@@ -61,28 +60,26 @@ if menu == "Registro":
 
     nombre = st.text_input("Nombre") or ""
     telefono = st.text_input("Teléfono") or ""
-    email = st.text_input("Email (opcional)") or ""
     instagram = st.text_input("Usuario de Instagram (opcional)") or ""
     tipo = st.selectbox("Tipo de cabello", ["Seco", "Graso", "Mixto", "Normal"])
     fecha = st.date_input("Fecha del procedimiento")
 
     if st.button("Guardar"):
-        # Convertir todos los campos a string y limpiar espacios
+        # Convertir todos los campos a string seguro
         nombre = str(nombre).strip()
         telefono = str(telefono).strip()
-        email = str(email).strip()
-        instagram = str(instagram).strip()
+        instagram = str(instagram).strip()  # Cualquier carácter permitido
         tipo = str(tipo).strip()
 
         # Convertir fecha a datetime seguro
         fecha_dt = datetime.combine(fecha, datetime.min.time())
         prox = calcular_proxima(fecha_dt)
 
-        # INSERT seguro con manejo de errores
+        # INSERT seguro en SQLite
         try:
             c.execute(
-                "INSERT INTO clientas VALUES (NULL,?,?,?,?,?,?,?)",
-                (nombre, telefono, email, instagram, tipo, fecha_dt.strftime("%Y-%m-%d"), prox.strftime("%Y-%m-%d"))
+                "INSERT INTO clientas VALUES (?,?,?,?,?,?)",
+                (nombre, telefono, instagram, tipo, fecha_dt.strftime("%Y-%m-%d"), prox.strftime("%Y-%m-%d"))
             )
             conn.commit()
             st.success(f"Guardado. Próxima cita: {prox.strftime('%d-%m-%Y')}")
@@ -92,8 +89,11 @@ if menu == "Registro":
 # ---- CALENDARIO ----
 elif menu == "Calendario":
     st.subheader("Próximas citas")
-    df = pd.read_sql("SELECT nombre, telefono, proxima_cita FROM clientas", conn)
-    st.dataframe(df)
+    try:
+        df = pd.read_sql("SELECT nombre, telefono, instagram, tipo_cabello, fecha_procedimiento, proxima_cita FROM clientas", conn)
+        st.dataframe(df)
+    except pd.io.sql.DatabaseError:
+        st.info("No hay registros para mostrar.")
 
 # ---- ADMIN ----
 elif menu == "Admin":
@@ -103,8 +103,11 @@ elif menu == "Admin":
     if st.button("Ingresar"):
         if user == "admin" and pwd == "1234":
             st.success("Acceso concedido")
-            df = pd.read_sql("SELECT * FROM clientas", conn)
-            st.dataframe(df)
+            try:
+                df = pd.read_sql("SELECT * FROM clientas", conn)
+                st.dataframe(df)
+            except pd.io.sql.DatabaseError:
+                st.info("No hay registros para mostrar.")
         else:
             st.error("Credenciales incorrectas")
 
@@ -112,39 +115,34 @@ elif menu == "Admin":
 elif menu == "Notificaciones":
     st.subheader("Clientas próximas a cumplir 4 meses desde su tratamiento")
 
-    # Verificar si hay registros antes de leerlos
-    c.execute("SELECT COUNT(*) FROM clientas")
-    total = c.fetchone()[0]
+    try:
+        df = pd.read_sql("SELECT nombre, telefono, instagram, tipo_cabello, fecha_procedimiento, proxima_cita FROM clientas", conn)
+    except pd.io.sql.DatabaseError:
+        df = pd.DataFrame()
 
-    if total == 0:
-        st.info("No hay clientas registradas aún.")
+    hoy = datetime.today().date()
+    notificaciones = []
+
+    for _, row in df.iterrows():
+        try:
+            fecha_proc = datetime.strptime(row['fecha_procedimiento'], "%Y-%m-%d").date()
+        except:
+            continue
+
+        diferencia = (hoy - fecha_proc).days
+        if 118 <= diferencia <= 122:
+            notificaciones.append({
+                "Nombre": row['nombre'],
+                "Teléfono": row['telefono'],
+                "Instagram": row['instagram'],
+                "Tipo de cabello": row['tipo_cabello'],
+                "Fecha de tratamiento": fecha_proc.strftime('%d-%m-%Y'),
+                "Próxima cita": row['proxima_cita']
+            })
+
+    if notificaciones:
+        st.dataframe(pd.DataFrame(notificaciones))
+        st.info("Estas clientas están por cumplir 4 meses desde su tratamiento. ¡Es hora de contactarlas!")
     else:
-        df = pd.read_sql("SELECT nombre, telefono, email, instagram, fecha_procedimiento, proxima_cita FROM clientas", conn)
-        hoy = datetime.today().date()
-
-        notificaciones = []
-        for _, row in df.iterrows():
-            # Validar fecha
-            try:
-                fecha_proc = datetime.strptime(row['fecha_procedimiento'], "%Y-%m-%d").date()
-            except:
-                continue
-
-            diferencia = (hoy - fecha_proc).days
-            # Aproximadamente 4 meses = 120 días
-            if 118 <= diferencia <= 122:
-                notificaciones.append({
-                    "Nombre": row['nombre'],
-                    "Teléfono": row['telefono'],
-                    "Email": row['email'],
-                    "Instagram": row['instagram'],
-                    "Fecha de tratamiento": fecha_proc.strftime('%d-%m-%Y'),
-                    "Próxima cita": row['proxima_cita']
-                })
-
-        if notificaciones:
-            st.dataframe(pd.DataFrame(notificaciones))
-            st.info("Estas clientas están por cumplir 4 meses desde su tratamiento. ¡Es hora de contactarlas!")
-        else:
-            st.success("No hay clientas próximas a cumplir 4 meses.")
+        st.success("No hay clientas próximas a cumplir 4 meses.")
 
