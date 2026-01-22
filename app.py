@@ -22,7 +22,7 @@ section[data-testid="stSidebar"] { background-color: #f1e7ec; }
 """, unsafe_allow_html=True)
 
 # ---- LOGO ----
-logo_path = os.path.join(os.path.dirname(__file__), "logo.png")  # ruta relativa
+logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
 if os.path.exists(logo_path):
     st.image(logo_path, width=220)
 else:
@@ -31,7 +31,7 @@ else:
 st.markdown("<h2 style='text-align:center;'>Tratamiento de Aminoácidos Capilares</h2>", unsafe_allow_html=True)
 
 # ---- BASE DE DATOS ----
-db_path = os.path.join(os.path.dirname(__file__), "clientas.db")  # ruta relativa
+db_path = os.path.join(os.path.dirname(__file__), "clientas.db")
 conn = sqlite3.connect(db_path, check_same_thread=False)
 c = conn.cursor()
 
@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS clientas (
     nombre TEXT,
     telefono TEXT,
     email TEXT,
+    instagram TEXT,
     tipo_cabello TEXT,
     fecha_procedimiento TEXT,
     proxima_cita TEXT
@@ -52,7 +53,7 @@ def calcular_proxima(fecha):
     return fecha + relativedelta(months=5)
 
 # ---- MENÚ ----
-menu = st.sidebar.selectbox("Menú", ["Registro", "Calendario", "Admin"])
+menu = st.sidebar.selectbox("Menú", ["Registro", "Calendario", "Admin", "Notificaciones"])
 
 # ---- REGISTRO ----
 if menu == "Registro":
@@ -60,7 +61,8 @@ if menu == "Registro":
 
     nombre = st.text_input("Nombre")
     telefono = st.text_input("Teléfono")
-    email = st.text_input("Email")
+    email = st.text_input("Email (opcional)")
+    instagram = st.text_input("Usuario de Instagram (opcional)")
     tipo = st.selectbox("Tipo de cabello", ["Seco", "Graso", "Mixto", "Normal"])
     fecha = st.date_input("Fecha del procedimiento")
 
@@ -68,30 +70,6 @@ if menu == "Registro":
         if nombre and telefono:
             prox = calcular_proxima(datetime.combine(fecha, datetime.min.time()))
             c.execute(
-                "INSERT INTO clientas VALUES (NULL,?,?,?,?,?,?)",
-                (nombre, telefono, email, tipo, fecha.strftime("%Y-%m-%d"), prox.strftime("%Y-%m-%d"))
-            )
-            conn.commit()
-            st.success(f"Guardado. Próxima cita: {prox.strftime('%d-%m-%Y')}")
-        else:
-            st.error("Nombre y teléfono obligatorios")
+                "INSERT INT
 
-# ---- CALENDARIO ----
-elif menu == "Calendario":
-    st.subheader("Próximas citas")
-    df = pd.read_sql("SELECT nombre, telefono, proxima_cita FROM clientas", conn)
-    st.dataframe(df)
-
-# ---- ADMIN ----
-elif menu == "Admin":
-    user = st.text_input("Usuario")
-    pwd = st.text_input("Contraseña", type="password")
-
-    if st.button("Ingresar"):
-        if user == "admin" and pwd == "1234":
-            st.success("Acceso concedido")
-            df = pd.read_sql("SELECT * FROM clientas", conn)
-            st.dataframe(df)
-        else:
-            st.error("Credenciales incorrectas")
 
