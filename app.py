@@ -67,21 +67,19 @@ if menu == "Registro":
     fecha = st.date_input("Fecha del procedimiento")
 
     if st.button("Guardar"):
-        # Validar campos obligatorios
-        if not nombre.strip() or not telefono.strip():
-            st.error("Nombre y teléfono son obligatorios")
-        else:
-            # Asegurar que los campos opcionales no sean None
-            email = email.strip() if email else ""
-            instagram = instagram.strip() if instagram else ""
-            
-            prox = calcular_proxima(datetime.combine(fecha, datetime.min.time()))
-            c.execute(
-                "INSERT INTO clientas VALUES (NULL,?,?,?,?,?,?,?)",
-                (nombre.strip(), telefono.strip(), email, instagram, tipo, fecha.strftime("%Y-%m-%d"), prox.strftime("%Y-%m-%d"))
-            )
-            conn.commit()
-            st.success(f"Guardado. Próxima cita: {prox.strftime('%d-%m-%Y')}")
+        # Todos los campos pueden estar vacíos
+        nombre = nombre.strip() if nombre else ""
+        telefono = telefono.strip() if telefono else ""
+        email = email.strip() if email else ""
+        instagram = instagram.strip() if instagram else ""
+
+        prox = calcular_proxima(datetime.combine(fecha, datetime.min.time()))
+        c.execute(
+            "INSERT INTO clientas VALUES (NULL,?,?,?,?,?,?,?)",
+            (nombre, telefono, email, instagram, tipo, fecha.strftime("%Y-%m-%d"), prox.strftime("%Y-%m-%d"))
+        )
+        conn.commit()
+        st.success(f"Guardado. Próxima cita: {prox.strftime('%d-%m-%Y')}")
 
 # ---- CALENDARIO ----
 elif menu == "Calendario":
@@ -136,7 +134,3 @@ elif menu == "Notificaciones":
             st.info("Estas clientas están por cumplir 4 meses desde su tratamiento. ¡Es hora de contactarlas!")
         else:
             st.success("No hay clientas próximas a cumplir 4 meses.")
-
-
-
-
