@@ -1,10 +1,11 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
-from datetime import datetime, date
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import os
 
+# ---- CONFIGURACIÓN DE PÁGINA ----
 st.set_page_config(
     page_title="Tarym Hernandez Hair Care",
     page_icon="💧",
@@ -20,8 +21,8 @@ section[data-testid="stSidebar"] { background-color: #f1e7ec; }
 </style>
 """, unsafe_allow_html=True)
 
-# ---- LOGO (SEGURO) ----
-logo_path = "/content/logo.png"
+# ---- LOGO ----
+logo_path = os.path.join(os.path.dirname(__file__), "logo.png")  # ruta relativa
 if os.path.exists(logo_path):
     st.image(logo_path, width=220)
 else:
@@ -29,8 +30,9 @@ else:
 
 st.markdown("<h2 style='text-align:center;'>Tratamiento de Aminoácidos Capilares</h2>", unsafe_allow_html=True)
 
-# ---- DB ----
-conn = sqlite3.connect("/content/clientas.db", check_same_thread=False)
+# ---- BASE DE DATOS ----
+db_path = os.path.join(os.path.dirname(__file__), "clientas.db")  # ruta relativa
+conn = sqlite3.connect(db_path, check_same_thread=False)
 c = conn.cursor()
 
 c.execute("""
@@ -49,6 +51,7 @@ conn.commit()
 def calcular_proxima(fecha):
     return fecha + relativedelta(months=5)
 
+# ---- MENÚ ----
 menu = st.sidebar.selectbox("Menú", ["Registro", "Calendario", "Admin"])
 
 # ---- REGISTRO ----
@@ -91,4 +94,4 @@ elif menu == "Admin":
             st.dataframe(df)
         else:
             st.error("Credenciales incorrectas")
- 
+
