@@ -35,7 +35,7 @@ db_path = os.path.join(os.path.dirname(__file__), "clientas.db")
 conn = sqlite3.connect(db_path, check_same_thread=False)
 c = conn.cursor()
 
-# Crear tabla sin id y sin correo
+# Crear tabla si no existe
 c.execute("""
 CREATE TABLE IF NOT EXISTS clientas (
     nombre TEXT,
@@ -68,23 +68,27 @@ if menu == "Registro":
         # Convertir todos los campos a string seguro
         nombre = str(nombre).strip()
         telefono = str(telefono).strip()
-        instagram = str(instagram).strip()  # Cualquier carácter permitido
+        instagram = str(instagram).strip()  # Instagram opcional, acepta cualquier carácter
         tipo = str(tipo).strip()
 
-        # Convertir fecha a datetime seguro
-        fecha_dt = datetime.combine(fecha, datetime.min.time())
-        prox = calcular_proxima(fecha_dt)
+        # Validar campos obligatorios
+        if not nombre or not telefono:
+            st.error("Los campos Nombre y Teléfono son obligatorios")
+        else:
+            # Convertir fecha a datetime seguro
+            fecha_dt = datetime.combine(fecha, datetime.min.time())
+            prox = calcular_proxima(fecha_dt)
 
-        # INSERT seguro en SQLite
-        try:
-            c.execute(
-                "INSERT INTO clientas VALUES (?,?,?,?,?,?)",
-                (nombre, telefono, instagram, tipo, fecha_dt.strftime("%Y-%m-%d"), prox.strftime("%Y-%m-%d"))
-            )
-            conn.commit()
-            st.success(f"Guardado. Próxima cita: {prox.strftime('%d-%m-%Y')}")
-        except sqlite3.Error as e:
-            st.error(f"No se pudo guardar en la base de datos: {e}")
+            # INSERT seguro en SQLite
+            try:
+                c.execute(
+                    "INSERT INTO clientas (nombre, telefono, instagram, tipo_cabello, fecha_procedimiento, proxima_cita) VALUES (?,?,?,?,?,?)",
+                    (nombre, telefono, instagram, tipo, fecha_dt.strftime("%Y-%m-%d"), prox.strftime("%Y-%m-%d"))
+                )
+                conn.commit()
+                st.success(f"Guardado. Próxima cita: {prox.strftime('%d-%m-%Y')}")
+            except sqlite3.Error as e:
+                st.error(f"No se pudo guardar en la base de datos: {e}")
 
 # ---- CALENDARIO ----
 elif menu == "Calendario":
@@ -130,7 +134,7 @@ elif menu == "Notificaciones":
             continue
 
         diferencia = (hoy - fecha_proc).days
-        if 118 <= diferencia <= 122:
+        if 118 <= diferencia <= 122:  # Aproximadamente 4 meses
             notificaciones.append({
                 "Nombre": row['nombre'],
                 "Teléfono": row['telefono'],
@@ -145,4 +149,5 @@ elif menu == "Notificaciones":
         st.info("Estas clientas están por cumplir 4 meses desde su tratamiento. ¡Es hora de contactarlas!")
     else:
         st.success("No hay clientas próximas a cumplir 4 meses.")
+
 
