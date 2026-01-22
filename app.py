@@ -35,9 +35,10 @@ db_path = os.path.join(os.path.dirname(__file__), "clientas.db")
 conn = sqlite3.connect(db_path, check_same_thread=False)
 c = conn.cursor()
 
-# Crear tabla si no existe
+# ---- ELIMINAR TABLA VIEJA Y CREAR LA NUEVA ----
+c.execute("DROP TABLE IF EXISTS clientas")
 c.execute("""
-CREATE TABLE IF NOT EXISTS clientas (
+CREATE TABLE clientas (
     nombre TEXT,
     telefono TEXT,
     instagram TEXT,
@@ -65,21 +66,18 @@ if menu == "Registro":
     fecha = st.date_input("Fecha del procedimiento")
 
     if st.button("Guardar"):
-        # Convertir todos los campos a string seguro
+        # Limpiar strings
         nombre = str(nombre).strip()
         telefono = str(telefono).strip()
-        instagram = str(instagram).strip()  # Instagram opcional, acepta cualquier carácter
+        instagram = str(instagram).strip()
         tipo = str(tipo).strip()
 
-        # Validar campos obligatorios
         if not nombre or not telefono:
             st.error("Los campos Nombre y Teléfono son obligatorios")
         else:
-            # Convertir fecha a datetime seguro
             fecha_dt = datetime.combine(fecha, datetime.min.time())
             prox = calcular_proxima(fecha_dt)
 
-            # INSERT seguro en SQLite
             try:
                 c.execute(
                     "INSERT INTO clientas (nombre, telefono, instagram, tipo_cabello, fecha_procedimiento, proxima_cita) VALUES (?,?,?,?,?,?)",
@@ -149,5 +147,6 @@ elif menu == "Notificaciones":
         st.info("Estas clientas están por cumplir 4 meses desde su tratamiento. ¡Es hora de contactarlas!")
     else:
         st.success("No hay clientas próximas a cumplir 4 meses.")
+
 
 
