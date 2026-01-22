@@ -35,10 +35,9 @@ db_path = os.path.join(os.path.dirname(__file__), "clientas.db")
 conn = sqlite3.connect(db_path, check_same_thread=False)
 c = conn.cursor()
 
-# ---- ELIMINAR TABLA VIEJA Y CREAR LA NUEVA ----
-c.execute("DROP TABLE IF EXISTS clientas")
+# ---- SOLO CREAR TABLA SI NO EXISTE ----
 c.execute("""
-CREATE TABLE clientas (
+CREATE TABLE IF NOT EXISTS clientas (
     nombre TEXT,
     telefono TEXT,
     instagram TEXT,
