@@ -59,27 +59,35 @@ menu = st.sidebar.selectbox("Menú", ["Registro", "Calendario", "Admin", "Notifi
 if menu == "Registro":
     st.subheader("Registro de clienta")
 
-    nombre = st.text_input("Nombre")
-    telefono = st.text_input("Teléfono")
-    email = st.text_input("Email (opcional)")
-    instagram = st.text_input("Usuario de Instagram (opcional)")
+    nombre = st.text_input("Nombre") or ""
+    telefono = st.text_input("Teléfono") or ""
+    email = st.text_input("Email (opcional)") or ""
+    instagram = st.text_input("Usuario de Instagram (opcional)") or ""
     tipo = st.selectbox("Tipo de cabello", ["Seco", "Graso", "Mixto", "Normal"])
     fecha = st.date_input("Fecha del procedimiento")
 
     if st.button("Guardar"):
-        # Todos los campos pueden estar vacíos
-        nombre = nombre.strip() if nombre else ""
-        telefono = telefono.strip() if telefono else ""
-        email = email.strip() if email else ""
-        instagram = instagram.strip() if instagram else ""
+        # Convertir todos los campos a string y limpiar espacios
+        nombre = str(nombre).strip()
+        telefono = str(telefono).strip()
+        email = str(email).strip()
+        instagram = str(instagram).strip()
+        tipo = str(tipo).strip()
 
-        prox = calcular_proxima(datetime.combine(fecha, datetime.min.time()))
-        c.execute(
-            "INSERT INTO clientas VALUES (NULL,?,?,?,?,?,?,?)",
-            (nombre, telefono, email, instagram, tipo, fecha.strftime("%Y-%m-%d"), prox.strftime("%Y-%m-%d"))
-        )
-        conn.commit()
-        st.success(f"Guardado. Próxima cita: {prox.strftime('%d-%m-%Y')}")
+        # Convertir fecha a datetime seguro
+        fecha_dt = datetime.combine(fecha, datetime.min.time())
+        prox = calcular_proxima(fecha_dt)
+
+        # INSERT seguro con manejo de errores
+        try:
+            c.execute(
+                "INSERT INTO clientas VALUES (NULL,?,?,?,?,?,?,?)",
+                (nombre, telefono, email, instagram, tipo, fecha_dt.strftime("%Y-%m-%d"), prox.strftime("%Y-%m-%d"))
+            )
+            conn.commit()
+            st.success(f"Guardado. Próxima cita: {prox.strftime('%d-%m-%Y')}")
+        except sqlite3.Error as e:
+            st.error(f"No se pudo guardar en la base de datos: {e}")
 
 # ---- CALENDARIO ----
 elif menu == "Calendario":
@@ -116,7 +124,12 @@ elif menu == "Notificaciones":
 
         notificaciones = []
         for _, row in df.iterrows():
-            fecha_proc = datetime.strptime(row['fecha_procedimiento'], "%Y-%m-%d").date()
+            # Validar fecha
+            try:
+                fecha_proc = datetime.strptime(row['fecha_procedimiento'], "%Y-%m-%d").date()
+            except:
+                continue
+
             diferencia = (hoy - fecha_proc).days
             # Aproximadamente 4 meses = 120 días
             if 118 <= diferencia <= 122:
@@ -134,3 +147,4 @@ elif menu == "Notificaciones":
             st.info("Estas clientas están por cumplir 4 meses desde su tratamiento. ¡Es hora de contactarlas!")
         else:
             st.success("No hay clientas próximas a cumplir 4 meses.")
+
